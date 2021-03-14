@@ -4,7 +4,7 @@ from ytmusicapi import YTMusic
 import psycopg2
 import psycopg2.extras
 import argparse
-from Utilities import Utilities
+from utilities.logging import Logging
 from music.artist import Artist
 from music.playlist import Playlist
 
@@ -46,7 +46,7 @@ def main():
 
     args = parser.parse_args()
 
-    u = Utilities(args.verbose)
+    u = Logging(args.verbose)
     u.log('Here we go')
     u.debug('Running in verbose mode')
     
