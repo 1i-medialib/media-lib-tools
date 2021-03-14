@@ -1,4 +1,5 @@
-from Utilities import Utilities
+from utilities.logging import Logging
+from utilities.gen import Gen
 from music.artist import Artist
 from music.album import Album
 import psycopg2
@@ -11,7 +12,8 @@ class Song:
 
     def __init__(self, utilities, ytmusic, dbh, info=None):
         
-        self.u = utilities  # Utilities Object
+        self.gen = Gen()
+        self.log = utilities  # Utilities Object
         self.ytm = ytmusic  # youtube Music API object
         self.dbh = dbh      # database handle
         self.id = None      # pk from database
@@ -49,21 +51,21 @@ class Song:
                 self.rating = info['rating']
 
     def print_attributes(self):
-        self.u.log('Song:')
-        self.u.log('  Title          : {}'.format(self.title))
+        self.log.log('Song:')
+        self.log.log('  Title          : {}'.format(self.title))
         for a in self.artists:
-            self.u.log('  Artist         : {}'.format(a.name))
-            self.u.log('  Artist id      : {}'.format(a.id))
+            self.log.log('  Artist         : {}'.format(a.name))
+            self.log.log('  Artist id      : {}'.format(a.id))
         if self.album:
-            self.u.log('  Album Name     : {}'.format(self.album.name))
-        self.u.log('  Rating         : {}'.format(self.rating))
-        self.u.log('  Release Date   : {}'.format(self.release_date))
-        self.u.log('  Duration       : {}'.format(self.duration))
-        self.u.log('  YouTube Id     : {}'.format(self.yt_id))
-        self.u.log('  YTM Like Status: {}'.format(self.yt_like_status))
+            self.log.log('  Album Name     : {}'.format(self.album.name))
+        self.log.log('  Rating         : {}'.format(self.rating))
+        self.log.log('  Release Date   : {}'.format(self.release_date))
+        self.log.log('  Duration       : {}'.format(self.duration))
+        self.log.log('  YouTube Id     : {}'.format(self.yt_id))
+        self.log.log('  YTM Like Status: {}'.format(self.yt_like_status))
 
     def load_song_from_youtube(self, youtube_song):
-        # self.u.pprintd(youtube_song)
+        # self.log.pprintd(youtube_song)
         __artist_id = None
         if 'id' in youtube_song:
             self.yt_id = youtube_song['id']
@@ -73,20 +75,20 @@ class Song:
             self.title = youtube_song['title']
         if 'artists' in youtube_song:
             for artist in youtube_song['artists']:
-                a = Artist(self.u,self.ytm,self.dbh)
+                a = Artist(self.log,self.ytm,self.dbh)
                 a.load_artist_from_youtube(artist)
                 self.artists.append(a)
                 if not __artist_id:
                     __artist_id = a.id
         else:
-            self.u.log('No artist for song: {}'.format(self.title))
+            self.log.log('No artist for song: {}'.format(self.title))
         if 'album' in youtube_song and youtube_song['album']:
-            al = Album(self.u,self.ytm,self.dbh,artist_id=artist_id)
+            al = Album(self.log,self.ytm,self.dbh,artist_id=__artist_id)
             al.load_album_from_youtube(youtube_song['album'])
             al.artist_id = __artist_id
             self.album = al
         else:
-            self.u.log('No album for song: {}'.format(self.title))
+            self.log.log('No album for song: {}'.format(self.title))
         if 'rating' in youtube_song:
             self.rating = youtube_song['rating']
         if 'likeStatus' in youtube_song:
@@ -100,7 +102,7 @@ class Song:
     def query_song_by_id(self):
         # query song from db
         if not self.id:
-            self.u.log('No id is defined to query song by')
+            self.log.log('No id is defined to query song by')
             return
         
         c_query = self.dbh.cursor(cursor_factory=psycopg2.extras.DictCursor)
@@ -111,7 +113,7 @@ class Song:
         """
         c_query.execute(query_statement,(self.id,))
         if c_query.rowcount == 0:
-            self.u.log('No song found for id: {}'.format(self.id))
+            self.log.log('No song found for id: {}'.format(self.id))
             return
         sdata = c_query.fetchone()
         self.title = sdata['title']
@@ -156,11 +158,11 @@ class Song:
             __album_id = 0
         c_query.execute(query_statement, (self.title,__artist_id,__album_id,))
         if c_query.rowcount == 0:
-            self.u.log('No song found for id: {}'.format(self.id))
+            self.log.log('No song found for id: {}'.format(self.id))
             return
         
         if c_query.rowcount != 1:
-            self.u.log('Found multiple songs!')
+            self.log.log('Found multiple songs!')
             return
 
         sdata = c_query.fetchone()
@@ -199,7 +201,7 @@ class Song:
                 if type(self.duration == 'int'):
                     __duration = self.duration
                 else:
-                    __duration = self.u.duration_to_seconds(self.duration)
+                    __duration = self.gen.duration_to_seconds(self.duration)
             else:
                 __duration = None
             if self.album and self.album.id:
@@ -234,10 +236,10 @@ class Song:
                  self.yt_id, self.filename, __artist_id, __album_id, self.media_type_id, self.id
                  )
             )
-            self.u.debug('Updated song: {}, id: {}'.format(
+            self.log.debug('Updated song: {}, id: {}'.format(
                 self.title, self.id))
         except (Exception, psycopg2.Error) as error:
-            self.u.log('Error updating song: {}'.format(error))
+            self.log.log('Error updating song: {}'.format(error))
             self.print_attributes()
             raise
 
@@ -258,7 +260,7 @@ class Song:
         try:
             c_stmt = self.dbh.cursor()
             if self.duration:
-                __duration = self.u.duration_to_seconds(self.duration)
+                __duration = self.gen.duration_to_seconds(self.duration)
             else:
                 __duration = None
             if self.album and self.album.id:
@@ -270,25 +272,25 @@ class Song:
             insert_stmt=""" 
             insert into medialib.song
                 ( title, comment, year, release_date, track_number,
-                arranger, bpm, rating, duration, disk_number, score,
+                arranger, bpm, rating, duration, disk_number, score, youtube_like_status,
                 youtube_id, filename, artist_id, album_id, media_type_id )
                 values
                 ( %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s, %s,
                 %s, %s, %s, %s, %s )
                 RETURNING id
             """
             c_stmt.execute(
                 insert_stmt,
                 ( self.title, self.comment, self.release_year, self.release_date, self.track_number,
-                self.arranger, self.bpm, self.rating, __duration, self.disk_number, self.score,
+                  self.arranger, self.bpm, self.rating, __duration, self.disk_number, self.score, self.yt_like_status,
                 self.yt_id, self.filename, artist_id, __album_id, self.media_type_id
                 )
             )
             self.id = c_stmt.fetchone()[0]
-            self.u.debug('Inserted song: {} as id: {}'.format(self.title,self.id))
+            self.log.debug('Inserted song: {} as id: {}'.format(self.title,self.id))
         except (Exception, psycopg2.Error) as error:
-            self.u.log('Error inserting song: {}'.format(error))
+            self.log.log('Error inserting song: {}'.format(error))
             self.print_attributes()
             raise 
 

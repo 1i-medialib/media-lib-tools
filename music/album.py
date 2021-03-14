@@ -1,4 +1,4 @@
-from Utilities import Utilities
+from utilities.logging import Logging
 from music.artist import Artist
 import psycopg2
 import psycopg2.extras

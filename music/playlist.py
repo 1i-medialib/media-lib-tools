@@ -1,4 +1,4 @@
-from Utilities import Utilities
+from utilities.logging import Logging
 from music.song import Song
 
 
