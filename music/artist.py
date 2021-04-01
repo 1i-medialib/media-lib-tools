@@ -5,27 +5,22 @@ import psycopg2.extras
 class Artist:
     "Music Artist class"
 
-    def __init__(self, utilities, ytmusic, dbh, info=None):
-        self.u = utilities  # Utilities Object
-        self.ytm = ytmusic  # youtube Music API object
+    def __init__(self, log, ytmusic, dbh, name=None, rating=0):
+        self.l = log         # Logging Object
+        self.ytm = ytmusic   # youtube Music API object
         self.dbh = dbh     # database handle
         self.id = None      # pk from database
 
 
-        self.name = None
-        self.rating = 0
+        self.name = name
+        self.rating = rating
         self.yt_id = None
-        if info:
-            if 'name' in info:
-                self.name = info['name']
-            if 'rating' in info:
-                self.rating = info['rating']
 
     def print_attributes(self):
-        self.u.debug('Artist:')
-        self.u.debug('  ID    : {}'.format(self.id))
-        self.u.debug('  Name  : {}'.format(self.name))
-        self.u.debug('  Rating: {}'.format(self.rating))
+        self.l.debug('Artist:')
+        self.l.debug('  ID    : {}'.format(self.id))
+        self.l.debug('  Name  : {}'.format(self.name))
+        self.l.debug('  Rating: {}'.format(self.rating))
 
     def load_artist_from_youtube(self,youtube_artist):
         if 'id' in youtube_artist:
@@ -39,7 +34,7 @@ class Artist:
     def query_artist_by_id(self):
         # query artist from db
         if not self.id:
-            self.u.log('No id is defined to query artist by')
+            self.l.log('No id is defined to query artist by')
             return
 
         c_query = self.dbh.cursor(cursor_factory=psycopg2.extras.DictCursor)
@@ -50,7 +45,7 @@ class Artist:
         """
         c_query.execute(query_statement, (self.id,))
         if c_query.rowcount == 0:
-            self.u.log('No artist found for id: {}'.format(self.id))
+            self.l.log('No artist found for id: {}'.format(self.id))
             return
         sdata = c_query.fetchone()
         self.name = sdata['name']
@@ -65,6 +60,8 @@ class Artist:
             return
 
         # query by title, artist, album
+        self.l.log('Querying artist with name: {}, type: {}'.format(
+                self.name, type(self.name)))
 
         c_query = self.dbh.cursor(cursor_factory=psycopg2.extras.DictCursor)
         query_statement = """
@@ -76,11 +73,11 @@ class Artist:
         c_query.execute(query_statement,
                         (self.name,))
         if c_query.rowcount == 0:
-            self.u.log('No artist found for name: {}'.format(self.name))
+            self.l.log('No artist found for name: {}, type: {}'.format(self.name, type(self.name)))
             return
 
         if c_query.rowcount != 1:
-            self.u.log('Found multiple artists!')
+            self.l.log('Found multiple artists!')
             return
 
         sdata = c_query.fetchone()
@@ -107,10 +104,10 @@ class Artist:
                 (self.name, self.rating, self.yt_id )
             )
             self.id = c_stmt.fetchone()[0]
-            self.u.debug('Inserted artist: {} as id: {}'.format(
+            self.l.debug('Inserted artist: {} as id: {}'.format(
                 self.name, self.id))
         except (Exception, psycopg2.Error) as error:
-            self.u.log('Error inserting artist: {}'.format(error))
+            self.l.log('Error inserting artist: {}'.format(error))
             self.print_attributes()
             raise
 

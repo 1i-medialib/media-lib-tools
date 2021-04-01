@@ -6,9 +6,9 @@ import psycopg2.extras
 class Album:
     "Music Album class"
 
-    def __init__(self, utilities, ytmusic, dbh, name=None, artist_id=None, release_date=None,
+    def __init__(self, log, ytmusic, dbh, name=None, artist_id=None, release_date=None,
                  release_year=None, number_of_disks=0, track_count=0, rating=0):
-        self.u = utilities  # Utilities Object
+        self.log = log      #  Logging Object
         self.ytm = ytmusic  # youtube Music API object
         self.dbh = dbh      # database handle
         self.id = None      # pk from database
@@ -23,16 +23,16 @@ class Album:
         self.yt_id = None
 
     def print_attributes(self):
-        self.u.debug('Album:')
-        self.u.debug('  Name       : {}'.format(self.name))
-        self.u.debug('  ID         : {}'.format(self.id))
-        self.u.debug('  Artist Id  : {}'.format(self.artist_id))
-        self.u.debug('  Rating     : {}'.format(self.rating))
-        self.u.debug('  Track Count: {}'.format(self.track_count))
-        self.u.debug('  YouTube ID : {}'.format(self.yt_id))
+        self.log.debug('Album:')
+        self.log.debug('  Name       : {}'.format(self.name))
+        self.log.debug('  ID         : {}'.format(self.id))
+        self.log.debug('  Artist Id  : {}'.format(self.artist_id))
+        self.log.debug('  Rating     : {}'.format(self.rating))
+        self.log.debug('  Track Count: {}'.format(self.track_count))
+        self.log.debug('  YouTube ID : {}'.format(self.yt_id))
 
     def load_album_from_youtube(self, youtube_album):
-        #uself.u.pprintd(youtube_album)
+        #uself.log.pprintd(youtube_album)
         if 'id' in youtube_album:
             self.yt_id = youtube_album['id']
         if 'name' in youtube_album:
@@ -52,7 +52,7 @@ class Album:
     def query_album_by_id(self):
         # query album from db
         if not self.id:
-            self.u.log('No id is defined to query album by')
+            self.log.log('No id is defined to query album by')
             return
 
         c_query = self.dbh.cursor(cursor_factory=psycopg2.extras.DictCursor)
@@ -63,7 +63,7 @@ class Album:
         """
         c_query.execute(query_statement, (self.id,))
         if c_query.rowcount == 0:
-            self.u.log('No album found for id: {}'.format(self.id))
+            self.log.log('No album found for id: {}'.format(self.id))
             return
         sdata = c_query.fetchone()
         self.name = sdata['name']
@@ -95,11 +95,11 @@ class Album:
         c_query.execute(query_statement,
                         (self.name,self.artist_id))
         if c_query.rowcount == 0:
-            self.u.log('No album found for name: {}'.format(self.name))
+            self.log.log('No album found for name: {}, artist id: {}'.format(self.name,self.artist_id))
             return
 
         if c_query.rowcount != 1:
-            self.u.log('Found multiple albums!')
+            self.log.log('Found multiple albums!')
             return
 
         sdata = c_query.fetchone()
@@ -134,9 +134,9 @@ class Album:
                 (self.name, self.artist_id, self.release_date, self.release_year, self.number_of_disks,
                  self.track_count, self.rating, self.yt_id, self.id)
             )
-            self.u.debug('Updated album: {}, id: {}'.format(self.name, self.id))
+            self.log.debug('Updated album: {}, id: {}'.format(self.name, self.id))
         except (Exception, psycopg2.Error) as error:
-            self.u.log('Error updating album: {}'.format(error))
+            self.log.log('Error updating album: {}'.format(error))
             self.print_attributes()
             raise
 
@@ -144,7 +144,7 @@ class Album:
             c_stmt.close()
 
     def insert_db(self):
-
+        self.log.log('Inserting album name {}, artist id: {}'.format(self.name,self.artist_id))
         try:
             c_stmt = self.dbh.cursor()
             insert_stmt = """ 
@@ -161,10 +161,10 @@ class Album:
                  self.track_count, self.rating, self.yt_id)
             )
             self.id = c_stmt.fetchone()[0]
-            self.u.debug('Inserted album: {} as id: {}'.format(
+            self.log.debug('Inserted album: {} as id: {}'.format(
                 self.name, self.id))
         except (Exception, psycopg2.Error) as error:
-            self.u.log('Error inserting album: {}'.format(error))
+            self.log.log('Error inserting album: {}'.format(error))
             self.print_attributes()
             raise
 
