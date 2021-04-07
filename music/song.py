@@ -18,7 +18,8 @@ class Song:
             release_date=None,
             release_year=None,
             rating=0,
-            track_number=None
+            track_number=None,
+            plex_id=None
             ):
         
         self.gen = Gen()
@@ -57,6 +58,7 @@ class Song:
         self.lyrics = None
         self.media_type_id = 1
         self.play_count = play_count
+        self.plex_id = plex_id
         self.rating = rating
         self.release_date = release_date
         self.release_year = release_year
@@ -85,7 +87,7 @@ class Song:
                 self.log.log('unsupported file type: {}'.format(self.file_extension))
                 raise TypeError
 
-            self.print_attributes()
+        self.print_attributes()
 
 
     def print_attributes(self):
@@ -97,6 +99,7 @@ class Song:
             self.log.log('  Artist id           : {}'.format(a.id))
         if self.album:
             self.log.log('  Album Name          : {}'.format(self.album.name))
+            self.log.log('  Album id            : {}'.format(self.album.id))
         self.log.log('  Rating              : {}'.format(self.rating))
         self.log.log('  Release Date        : {}'.format(self.release_date))
         self.log.log('  Duration            : {}, type {}'.format(self.duration,type(self.duration).__name__))
@@ -125,6 +128,21 @@ class Song:
                 a.insert_db()
             self.artists.append(a)
         self.artist_sort = f.artist_sort
+
+        if f.album:
+            al = Album(log=self.log,
+                       ytmusic=self.ytm,
+                       dbh=self.dbh,
+                       name=f.album,
+                       artist_id=self.artists[0].id)
+            al.query_album()
+            if not al.id:
+                self.log.debug('couldn\'t find an album')
+                al.insert_db()
+            else:
+                self.log.debug('found an album: {}'.format(al.id))
+            self.album = al
+
         self.bitrate = f.bitrate
         self.bpm = f.bpm
         self.channels = f.channels
@@ -521,6 +539,8 @@ class Song:
             else:
                 __album_id = 0
 
+            self.log.debug('Album Id is {}'.format(__album_id))
+
             update_stmt = """ 
             update medialib.song
                 set title = %s,
@@ -614,7 +634,9 @@ class Song:
         self.query_song()
 
         if self.id:
+            self.log.debug('Updating album')
             self.update_db()
         else:
+            self.log.debug('Inserting album')
             self.insert_db()
         self.dbh.commit()
