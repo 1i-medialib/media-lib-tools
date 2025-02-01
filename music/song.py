@@ -63,6 +63,7 @@ class Song:
         self.release_date = release_date
         self.release_year = release_year
         self.score = 0
+        self.title = None
         self.track_number = None
 
         self.yt_id = None   # id or videoId from youtube music
@@ -88,6 +89,7 @@ class Song:
                 raise TypeError
 
         self.print_attributes()
+
 
 
     def print_attributes(self):
@@ -172,11 +174,17 @@ class Song:
 
         self.popularimeter = self.id3.getall('POPM')
         if self.popularimeter:
+            self.log.debug('popularimeter is type: {}'.format(type(self.popularimeter)))
+            self.log.debug('popularimeter is: {}'.format(self.popularimeter))
+            if hasattr(self.popularimeter[0],'count'):
+                pcount = self.popularimeter[0].count
+            else:
+                pcount = 0
             self.log.debug('popularimeter- email: {}, rating: {}, count: {}'.
                   format(
                       self.popularimeter[0].email,
                       self.popularimeter[0].rating,
-                      self.popularimeter[0].count
+                      pcount
                   )
                   )
         __as = self.id3.getall('TXXX:FMPS_Rating_Amarok_Score')
@@ -216,6 +224,7 @@ class Song:
         from mutagen.flac import FLAC
         __audio = FLAC(self.filename)
 
+        self.log.debug('Flac Tags:')
         self.log.debug(__audio.tags)
         self.bit_rate = __audio.info.bitrate
         self.duration = __audio.info.length
@@ -258,10 +267,13 @@ class Song:
         self.comments = self.get_tag_value(__audio.tags, 'COMMENT')
         self.lyrics = self.get_tag_value(__audio.tags, 'LYRICS')
         self.rating = self.get_tag_value(__audio.tags, 'FMPS_RATING')
+        self.log.debug('Rating: {}, type: {}'.format(self.rating,type(self.rating)))
         if self.rating == '':
             self.rating = 0
-        else:
+        elif( type(self.rating) == "list" ):
             self.rating = float(self.rating[0]) * 10
+        else:
+            self.rating = float(self.rating) * 10
 
     def handle_mp4(self):
         try:
@@ -378,7 +390,45 @@ class Song:
         if self.clementinerating:
             self.rating = int(float(self.clementinerating) * 10)
         elif self.popularimeter and self.popularimeter[0].rating:
-            self.rating = self.popularimeter[0].rating/51
+            # TODO: create a map
+            # 255 - 5 stars
+            # 242 - 4.5
+            # 196 - 4
+            # 186 = 3.5
+            # 128 - 3
+            # 118 - 2.5
+            # 64 = 2 
+            # 54 - 1.5
+            # 1 - 1
+            # 13 - .0
+            # 0 - 0
+            if self.popularimeter[0].rating == 0:
+                self.rating = 0
+            elif self.popularimeter[0].rating == 13:
+                self.rating = .5
+            elif self.popularimeter[0].rating == 1:
+                self.rating = 1
+            elif self.popularimeter[0].rating == 54:
+                self.rating = 1.5
+            elif self.popularimeter[0].rating == 64:
+                self.rating = 2
+            elif self.popularimeter[0].rating == 118:
+                self.rating = 2.5
+            elif self.popularimeter[0].rating == 128:
+                self.rating = 3
+            elif self.popularimeter[0].rating == 186:
+                self.rating = 3.5
+            elif self.popularimeter[0].rating == 196:
+                self.rating = 4
+            elif self.popularimeter[0].rating == 242:
+                self.rating = 4.5
+            elif self.popularimeter[0].rating == 255:
+                self.rating = 5
+            elif self.popularimeter[0].rating > 10:
+                self.log.error('Rating is > 10')
+                raise ValueError
+            else:
+                self.rating = self.popularimeter[0].rating
         else:
             self.rating = 0
 
@@ -634,9 +684,9 @@ class Song:
         self.query_song()
 
         if self.id:
-            self.log.debug('Updating album')
+            self.log.debug('Updating song')
             self.update_db()
         else:
-            self.log.debug('Inserting album')
+            self.log.debug('Inserting song')
             self.insert_db()
         self.dbh.commit()

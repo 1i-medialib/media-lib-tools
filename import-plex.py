@@ -36,9 +36,6 @@ def read_dir(u,dbh,dir_path):
     global file_count
     global dir_count
     print('Reading directory {}'.format(dir_path))
-    if dir_path.endswith('@eaDir'):
-        print('not')
-        return
     p = Path(dir_path)
     for entry in p.iterdir():
         if entry.is_file():
