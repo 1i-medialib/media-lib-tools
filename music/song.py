@@ -1,18 +1,21 @@
-from utilities.logging import Logging
 from utilities.gen import Gen
 from music.artist import Artist
 from music.album import Album
 import psycopg2
 import psycopg2.extras
 import os
+import logging
 from mediafile import MediaFile
 import mutagen
 from mutagen.id3 import ID3, POPM, TXXX, TCON
+from utilities.exceptions import FileTypeImage, UnhandledFileType
+
+logger = logging.getLogger(__name__)
 
 class Song:
     "Music Song class"
 
-    def __init__(self, log, ytmusic, dbh,
+    def __init__(self, ytmusic, dbh,
             file_name=None,
             play_count=0,
             release_date=None,
@@ -23,7 +26,6 @@ class Song:
             ):
         
         self.gen = Gen()
-        self.log = log                  # Utilities Object
         self.ytm = ytmusic              # youtube Music API object
         self.dbh = dbh                  # database handle
         self.id = None                  # pk from database
@@ -69,10 +71,10 @@ class Song:
         self.yt_id = None   # id or videoId from youtube music
         self.yt_like_status = None  # INDIFFERENT, LIKE or DISLIKE
         if self.filename:
-            self.log.debug('working with file: {}'.format(self.filename))
+            logger.debug('working with file: {}'.format(self.filename))
             self.file_extension = os.path.splitext(self.filename)[1][1:]
             # TODO: store media_type_id from ext
-            self.log.debug('File Extension of {} is {}'.format(self.filename, self.file_extension))
+            logger.debug('File Extension of {} is {}'.format(self.filename, self.file_extension))
             # still need to use mutagen to get some fields
             if self.file_extension == 'ogg':
                 self.handle_ogg()
@@ -80,37 +82,47 @@ class Song:
                 self.handle_flac()
             elif self.file_extension == 'm4a' or self.file_extension == 'mp4':
                 self.handle_mp4()
+            elif self.file_extension == 'wav':
+                self.handle_wav()
             elif self.file_extension == 'mp3':
                 self.read_tag_data()
             elif self.file_extension == 'png':
-                raise TypeError
+                raise FileTypeImage(self.file_extension)
+            elif self.file_extension == 'jpg':
+                raise FileTypeImage(self.file_extension)
+            elif self.file_extension == 'db':
+                raise FileTypeImage(self.file_extension)
+            elif self.file_extension == 'txt':
+                raise FileTypeImage(self.file_extension)
             else:
-                self.log.log('unsupported file type: {}'.format(self.file_extension))
-                raise TypeError
+                logger.info('unsupported file type: {}'.format(self.file_extension))
+                raise UnhandledFileType(self.file_extension)
 
-        self.print_attributes()
+        # only print if debug level
+        if logging.root.level == logging.DEBUG:
+            self.print_attributes()
 
 
 
     def print_attributes(self):
-        self.log.log('Song:')
-        self.log.log('  Title               : {}'.format(self.title))
-        self.log.log('  File Name           : {}'.format(self.filename))
+        logger.warning('Song:')
+        logger.warning('  Title               : {}'.format(self.title))
+        logger.warning('  File Name           : {}'.format(self.filename))
         for a in self.artists:
-            self.log.log('  Artist              : {}'.format(a.name))
-            self.log.log('  Artist id           : {}'.format(a.id))
+            logger.warning('  Artist              : {}'.format(a.name))
+            logger.warning('  Artist id           : {}'.format(a.id))
         if self.album:
-            self.log.log('  Album Name          : {}'.format(self.album.name))
-            self.log.log('  Album id            : {}'.format(self.album.id))
-        self.log.log('  Rating              : {}'.format(self.rating))
-        self.log.log('  Release Date        : {}'.format(self.release_date))
-        self.log.log('  Duration            : {}, type {}'.format(self.duration,type(self.duration).__name__))
-        self.log.log('  YouTube Id          : {}'.format(self.yt_id))
-        self.log.log('  YTM Like Status     : {}'.format(self.yt_like_status))
-        self.log.log('  Score/Popularimeter : {}'.format(self.score))
-        self.log.log('  Comment             : {}'.format(self.comment))
+            logger.warning('  Album Name          : {}'.format(self.album.name))
+            logger.warning('  Album id            : {}'.format(self.album.id))
+        logger.warning('  Rating              : {}'.format(self.rating))
+        logger.warning('  Release Date        : {}'.format(self.release_date))
+        logger.warning('  Duration            : {}, type {}'.format(self.duration,type(self.duration).__name__))
+        logger.warning('  YouTube Id          : {}'.format(self.yt_id))
+        logger.warning('  YTM Like Status     : {}'.format(self.yt_like_status))
+        logger.warning('  Score/Popularimeter : {}'.format(self.score))
+        logger.warning('  Comment             : {}'.format(self.comment))
         if self.play_count:
-            self.log.log('  Play Count          : {}'.format(self.play_count))
+            logger.warning('  Play Count          : {}'.format(self.play_count))
 
     def read_tag_data(self):
         f = MediaFile(self.filename)
@@ -124,7 +136,7 @@ class Song:
             self.arranger = f.arranger
         self.art = f.art
         if f.artist:
-            a = Artist(self.log,self.ytm,self.dbh,name=f.artist)
+            a = Artist(self.ytm,self.dbh,name=f.artist)
             a.query_artist()
             if not a.id:
                 a.insert_db()
@@ -132,17 +144,16 @@ class Song:
         self.artist_sort = f.artist_sort
 
         if f.album:
-            al = Album(log=self.log,
-                       ytmusic=self.ytm,
+            al = Album(ytmusic=self.ytm,
                        dbh=self.dbh,
                        name=f.album,
                        artist_id=self.artists[0].id)
             al.query_album()
             if not al.id:
-                self.log.debug('couldn\'t find an album')
+                logger.debug('couldn\'t find an album')
                 al.insert_db()
             else:
-                self.log.debug('found an album: {}'.format(al.id))
+                logger.debug('found an album: {}'.format(al.id))
             self.album = al
 
         self.bitrate = f.bitrate
@@ -174,13 +185,13 @@ class Song:
 
         self.popularimeter = self.id3.getall('POPM')
         if self.popularimeter:
-            self.log.debug('popularimeter is type: {}'.format(type(self.popularimeter)))
-            self.log.debug('popularimeter is: {}'.format(self.popularimeter))
+            logger.debug('popularimeter is type: {}'.format(type(self.popularimeter)))
+            logger.debug('popularimeter is: {}'.format(self.popularimeter))
             if hasattr(self.popularimeter[0],'count'):
                 pcount = self.popularimeter[0].count
             else:
                 pcount = 0
-            self.log.debug('popularimeter- email: {}, rating: {}, count: {}'.
+            logger.debug('popularimeter- email: {}, rating: {}, count: {}'.
                   format(
                       self.popularimeter[0].email,
                       self.popularimeter[0].rating,
@@ -190,51 +201,52 @@ class Song:
         __as = self.id3.getall('TXXX:FMPS_Rating_Amarok_Score')
         if __as:
             self.amarokscore = (__as[0].text)[0]
-            self.log.debug('amarokscore is {}'.format(self.amarokscore))
+            logger.debug('amarokscore is {}'.format(self.amarokscore))
 
         __pc = self.id3.getall('TXXX:FMPS_PlayCount')
         if __pc:
             self.play_count = (__pc[0].text)[0]
-            self.log.debug('play_count is {}'.format(self.play_count))
+            logger.debug('play_count is {}'.format(self.play_count))
 
         __rt = self.id3.getall('TXXX:FMPS_Rating')
         if __rt:
             self.clementinerating = (__rt[0].text)[0]
-            self.log.debug('clementinerating is {}'.format(
+            logger.debug('clementinerating is {}'.format(
                 self.clementinerating))
-
 
         if not self.rating:
             self.set_master_rating()
 
     def get_tag_value(self, data, key):
-        #self.log.log('looking for key {} in data: {}'.format(key,data))
+        #logger.info('looking for key {} in data: {}'.format(key,data))
         value = data.get(key)
         if not value:
             return None
         if type(value).__name__ == 'list':
-            self.log.debug('need to convert value to string from list')
+            logger.debug('Need to convert value to string from list')
             __estr = " "
             rval = __estr.join(value)
         else:
             rval = value
+
+        logger.debug(f'Tag key: {key}, value: {rval}')
         return rval
 
     def handle_flac(self):
         from mutagen.flac import FLAC
         __audio = FLAC(self.filename)
 
-        self.log.debug('Flac Tags:')
-        self.log.debug(__audio.tags)
+        logger.debug('Flac Tags:')
+        logger.debug(__audio.tags)
         self.bit_rate = __audio.info.bitrate
         self.duration = __audio.info.length
         self.title = self.get_tag_value(__audio.tags, 'TITLE')
 
         __artist = self.get_tag_value(__audio.tags, 'ARTIST')
-        self.log.debug('flac artist is {}, type: {}'.format(
+        logger.debug('flac artist is {}, type: {}'.format(
             __artist, type(__artist)))
         if __artist:
-            a = Artist(self.log, self.ytm, self.dbh, name=__artist)
+            a = Artist(self.ytm, self.dbh, name=__artist)
             a.query_artist()
             if not a.id:
                 a.insert_db()
@@ -242,17 +254,16 @@ class Song:
 
         __album = self.get_tag_value(__audio.tags, 'ALBUM')
         if __album:
-            al = Album(log=self.log,
-                       ytmusic=self.ytm,
+            al = Album(ytmusic=self.ytm,
                        dbh=self.dbh,
                        name=__album,
                        artist_id=self.artists[0].id)
             al.query_album()
             if not al.id:
-                self.log.debug('couldn\'t find an album')
+                logger.debug('couldn\'t find an album')
                 al.insert_db()
             else:
-                self.log.debug('found an album: {}'.format(al.id))
+                logger.debug('found an album: {}'.format(al.id))
             self.album = al
 
         self.album_artist = self.get_tag_value(__audio.tags, 'ALBUMARTIST')
@@ -267,8 +278,10 @@ class Song:
         self.comments = self.get_tag_value(__audio.tags, 'COMMENT')
         self.lyrics = self.get_tag_value(__audio.tags, 'LYRICS')
         self.rating = self.get_tag_value(__audio.tags, 'FMPS_RATING')
-        self.log.debug('Rating: {}, type: {}'.format(self.rating,type(self.rating)))
+        logger.debug('Rating: {}, type: {}'.format(self.rating,type(self.rating)))
         if self.rating == '':
+            self.rating = 0
+        elif self.rating is None:
             self.rating = 0
         elif( type(self.rating) == "list" ):
             self.rating = float(self.rating[0]) * 10
@@ -292,7 +305,7 @@ class Song:
         if '©ART' in mf:
             __artist = mf['©ART'][0]
             if __artist:
-                a = Artist(self.log, self.ytm, self.dbh, name=__artist)
+                a = Artist(self.ytm, self.dbh, name=__artist)
                 a.query_artist()
                 if not a.id:
                     a.insert_db()
@@ -302,11 +315,10 @@ class Song:
         if '©alb' in mf:
             __album = mf['©alb'][0]
             if __album:
-                al = Album(log=self.log,
-                        ytmusic=self.ytm,
-                        dbh=self.dbh,
-                        name=__album,
-                        artist_id=self.artists[0].id)
+                al = Album(ytmusic=self.ytm,
+                           dbh=self.dbh,
+                           name=__album,
+                           artist_id=self.artists[0].id)
                 al.query_album()
                 if not al.id:
                     al.insert_db
@@ -331,21 +343,96 @@ class Song:
             self.score = int(
                 float(mf['----:com.apple.iTunes:FMPS_Rating_Amarok_Score'][0])*100)
 
+    def handle_wav(self):
+        "used mutagen.wave. Docs: https://mutagen.readthedocs.io/en/latest/api/wave.html"
+        """
+        Sample tags:
+            'TALB': Album
+            'TPE1': Lead Artist/Performer/Soloist/Group
+            'TPE2': Band/Orchestra/Accompaniment
+            'TCON': Genre, Example: text=['Blues Rock;Southern Rock']),
+            'TIT2': Title? Example: text=['Get On With Your Life']),
+            'TRCK': Track Number text=['5/8']),
+            'TPUB': Publisher text=['Epic']),
+            'POPM:MusicBee': POPM(email='MusicBee', rating=40),
+            'TPOS': Part of set. Example: text=['1/1']
+            'TMED': Medium text=['CD']),
+            'TDRC': Recording Time text=['1991-07-02']),
+            'TDOR': Original Release Time text=['1991'])
+        """
+        from mutagen.wave import WAVE
+        logger.debug('reading wav file: {}'.format(self.filename))
+        __audio = WAVE(self.filename)
+
+        for t in __audio.tags:
+            if 'APIC' in t:
+                continue
+            logger.debug('Tag: {}, value: {}'.format(t,__audio.tags[t]))
+
+        __artist = self.get_tag_value(__audio.tags, 'TPE1').text[0]
+        if not __artist:
+            __artist = self.get_tag_value(__audio.tags, 'TPE2').text[0]
+
+        logger.debug('wav artist is {}, type: {}'.format(__artist, type(__artist)))
+        if __artist:
+            a = Artist(self.ytm, self.dbh, name=__artist)
+            a.query_artist()
+            if not a.id:
+                a.insert_db()
+            self.artists.append(a)
+
+        __album = self.get_tag_value(__audio.tags, 'TALB').text[0]
+        if __album:
+            al = Album( ytmusic=self.ytm,
+                        dbh=self.dbh,
+                        name=__album,
+                        artist_id=self.artists[0].id)
+            al.query_album()
+            if not al.id:
+                al.insert_db
+            self.album = al
+
+        self.album_artist = self.get_tag_value(__audio.tags, 'TPE1').text[0]
+        self.title = self.get_tag_value(__audio.tags, 'TIT2').text[0]
+        __date = str(self.get_tag_value(__audio.tags, 'TDRC').text[0])
+        if __date:
+            logger.debug('date: {}, type: {}'.format(__date,type(__date)))
+            if len(__date) == 4:
+                self.release_year = __date
+            else:
+                self.release_date = __date
+        __track_number = self.get_tag_value(__audio.tags, 'TRCK').text[0]
+        if '/' in __track_number:
+            # value is x/y (track x of y). We only want x
+            self.track_number = __track_number.split('/')[0]
+        self.genre = self.get_tag_value(__audio.tags, 'TCON').text[0]
+        self.comments = self.get_tag_value(__audio.tags, 'COMM')
+        self.lyrics = self.get_tag_value(__audio.tags, 'USLT')
+        __mb_rating = self.get_tag_value(__audio.tags, 'POPM:MusicBee')
+        if __mb_rating:
+            logger.debug('rating: {}'.format(__mb_rating.rating))
+            self.rating = __mb_rating.rating
+        else:
+            self.rating = self.get_tag_value(__audio.tags, 'POPM')
+            if self.rating == '':
+                self.rating = 0
+            else:
+                self.rating = int(float(self.rating[0]) * 10)
 
     def handle_ogg(self):
         from mutagen.oggvorbis import OggVorbis
-        self.log.log('reading ogg file: {}'.format(self.filename))
+        logger.info('reading ogg file: {}'.format(self.filename))
         __audio = OggVorbis(self.filename)
 
-        self.log.debug(__audio.tags)
+        logger.debug(__audio.tags)
         self.bit_rate = __audio.info.bitrate
         self.duration = __audio.info.length
         self.title = self.get_tag_value(__audio.tags, 'TITLE')
 
         __artist = self.get_tag_value(__audio.tags, 'ARTIST')
-        self.log.debug('ogg artist is {}, type: {}'.format(__artist, type(__artist)))
+        logger.error('ogg artist is {}, type: {}'.format(__artist, type(__artist)))
         if __artist:
-            a = Artist(self.log, self.ytm, self.dbh, name=__artist)
+            a = Artist(self.ytm, self.dbh, name=__artist)
             a.query_artist()
             if not a.id:
                 a.insert_db()
@@ -354,8 +441,7 @@ class Song:
 
         __album = self.get_tag_value(__audio.tags, 'ALBUM')
         if __album:
-            al = Album( log=self.log,
-                        ytmusic=self.ytm,
+            al = Album( ytmusic=self.ytm,
                         dbh=self.dbh,
                         name=__album,
                         artist_id=self.artists[0].id)
@@ -425,17 +511,17 @@ class Song:
             elif self.popularimeter[0].rating == 255:
                 self.rating = 5
             elif self.popularimeter[0].rating > 10:
-                self.log.error('Rating is > 10')
+                logger.error('Rating is > 10')
                 raise ValueError
             else:
                 self.rating = self.popularimeter[0].rating
         else:
             self.rating = 0
 
-        self.log.debug('Set master rating: {}'.format(self.rating))
+        logger.debug('Set master rating: {}'.format(self.rating))
 
     def load_song_from_youtube(self, youtube_song):
-        # self.log.pprintd(youtube_song)
+        # logger.pprintd(youtube_song)
         __artist_id = None
         if 'id' in youtube_song:
             self.yt_id = youtube_song['id']
@@ -445,20 +531,20 @@ class Song:
             self.title = youtube_song['title']
         if 'artists' in youtube_song:
             for artist in youtube_song['artists']:
-                a = Artist(self.log,self.ytm,self.dbh)
+                a = Artist(self.ytm,self.dbh)
                 a.load_artist_from_youtube(artist)
                 self.artists.append(a)
                 if not __artist_id:
                     __artist_id = a.id
         else:
-            self.log.log('No artist for song: {}'.format(self.title))
+            logger.info('No artist for song: {}'.format(self.title))
         if 'album' in youtube_song and youtube_song['album']:
-            al = Album(self.log,self.ytm,self.dbh,artist_id=__artist_id)
+            al = Album(self.ytm,self.dbh,artist_id=__artist_id)
             al.load_album_from_youtube(youtube_song['album'])
             al.artist_id = __artist_id
             self.album = al
         else:
-            self.log.log('No album for song: {}'.format(self.title))
+            logger.info('No album for song: {}'.format(self.title))
         if 'rating' in youtube_song:
             self.rating = youtube_song['rating']
         if 'likeStatus' in youtube_song:
@@ -467,23 +553,25 @@ class Song:
             self.duration = youtube_song['duration']
         self.query_song()
         self.save()
-        self.print_attributes()
+        # only print if debug level
+        if logging.root.level == logging.DEBUG:
+            self.print_attributes()
 
     def query_song_by_id(self):
         # query song from db
         if not self.id:
-            self.log.log('No id is defined to query song by')
+            logger.info('No id is defined to query song by')
             return
         
         c_query = self.dbh.cursor(cursor_factory=psycopg2.extras.DictCursor)
         query_statement="""
             SELECT *
-            FROM    medialib.song s
+            FROM    song s
             WHERE   s.id = %s
         """
         c_query.execute(query_statement,(self.id,))
         if c_query.rowcount == 0:
-            self.log.log('No song found for id: {}'.format(self.id))
+            logger.debug('No song found for id: {}'.format(self.id))
             return
         sdata = c_query.fetchone()
         self.title = sdata['title']
@@ -516,7 +604,7 @@ class Song:
         c_query = self.dbh.cursor(cursor_factory=psycopg2.extras.DictCursor)
         query_statement = """
             SELECT *
-            FROM    medialib.song s
+            FROM    song s
             WHERE   s.title = %s
             AND     s.artist_id = %s
             AND     s.album_id = %s
@@ -529,11 +617,11 @@ class Song:
             __album_id = 0
         c_query.execute(query_statement, (self.title,__artist_id,__album_id,))
         if c_query.rowcount == 0:
-            self.log.log('No song found for id: {}'.format(self.id))
+            logger.debug('No song found for id: {}'.format(self.id))
             return
         
         if c_query.rowcount != 1:
-            self.log.log('Found multiple songs!')
+            logger.info('Found multiple songs!')
             return
 
         sdata = c_query.fetchone()
@@ -582,17 +670,17 @@ class Song:
             if self.duration:
                 __duration = self.gen.duration_to_seconds(self.duration)
             else:
-                self.log.log('Song has no duration')
+                logger.info('Song has no duration')
                 __duration = None
             if self.album and self.album.id:
                 __album_id = self.album.id
             else:
                 __album_id = 0
 
-            self.log.debug('Album Id is {}'.format(__album_id))
+            logger.debug('Album Id is {}'.format(__album_id))
 
             update_stmt = """ 
-            update medialib.song
+            update song
                 set title = %s,
                     comment = %s,
                     year = %s,
@@ -618,10 +706,10 @@ class Song:
                  self.yt_id, self.filename, __artist_id, __album_id, self.media_type_id, self.id
                  )
             )
-            self.log.debug('Updated song: {}, id: {}'.format(
+            logger.debug('Updated song: {}, id: {}'.format(
                 self.title, self.id))
         except (Exception, psycopg2.Error) as error:
-            self.log.log('Error updating song: {}'.format(error))
+            logger.info('Error updating song: {}'.format(error))
             self.print_attributes()
             raise
 
@@ -651,7 +739,7 @@ class Song:
                 __album_id = 0
 
             insert_stmt=""" 
-            insert into medialib.song
+            insert into song
                 ( title, comment, year, release_date, track_number,
                 arranger, bpm, rating, duration, disk_number, score, youtube_like_status,
                 youtube_id, filename, artist_id, album_id, media_type_id )
@@ -669,9 +757,9 @@ class Song:
                 )
             )
             self.id = c_stmt.fetchone()[0]
-            self.log.debug('Inserted song: {} as id: {}'.format(self.title,self.id))
+            logger.debug('Inserted song: {} as id: {}'.format(self.title,self.id))
         except (Exception, psycopg2.Error) as error:
-            self.log.log('Error inserting song: {}'.format(error))
+            logger.info('Error inserting song: {}'.format(error))
             self.print_attributes()
             raise 
 
@@ -684,9 +772,9 @@ class Song:
         self.query_song()
 
         if self.id:
-            self.log.debug('Updating song')
+            logger.debug('Updating song')
             self.update_db()
         else:
-            self.log.debug('Inserting song')
+            logger.debug('Inserting song')
             self.insert_db()
         self.dbh.commit()

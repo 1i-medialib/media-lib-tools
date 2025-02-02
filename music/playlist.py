@@ -1,12 +1,13 @@
-from utilities.logging import Logging
 from music.song import Song
+import logging
 
+logger = logging.getLogger(__name__)
 
 class Playlist:
     "Music Playlist class"
 
     def __init__(self, utilities, ytmusic, dbh, info=None):
-        self.u = utilities  # Utilities Object
+        logger = utilities  # Utilities Object
         self.ytm = ytmusic  # youtube Music API object
         self.dbh = dbh     # database handle
         self.id = None      # pk from database
@@ -30,25 +31,25 @@ class Playlist:
                 self.rating = int(info['rating'])
 
     def print_attributes(self):
-        self.u.log('Playlist:')
-        self.u.log('  Name       : {}'.format(self.name))
-        self.u.log('  Rating     : {}'.format(self.rating))
-        self.u.log('  Track Count: {}'.format(self.track_count))
+        logger.warning('Playlist:')
+        logger.warning('  Name       : {}'.format(self.name))
+        logger.warning('  Rating     : {}'.format(self.rating))
+        logger.warning('  Track Count: {}'.format(self.track_count))
 
     def get_songs_from_youtube_playlist_id(self):
         if not self.yt_id:
-            self.u.log('No yt id set')
+            logger.info('No yt id set')
             return
         
         pl = self.ytm.get_playlist(self.yt_id, limit=(self.track_count + 1))
         for track in pl['tracks']:
-            s = Song(self.u,self.ytm,self.dbh)
+            s = Song(logger,self.ytm,self.dbh)
             s.load_song_from_youtube(track)
             self.songs.append(s)
 
 
     def load_playlist_from_youtube(self, youtube_playlist):
-        # self.u.pprintd(youtube_playlist)
+        # logger.pprintd(youtube_playlist)
 
         if 'id' in youtube_playlist:
             self.yt_id = youtube_playlist['id']
@@ -67,12 +68,15 @@ class Playlist:
         else:
             # get songs from pl
             self.get_songs_from_youtube_playlist_id()
-        self.print_attributes()
+
+        # only print if debug level
+        if logging.root.level == logging.DEBUG:
+            self.print_attributes()
 
     def save(self):
         # save items in the playlist to db
-        self.u.debug('Saving playlist: {}'.format(self.name))
+        logger.debug('Saving playlist: {}'.format(self.name))
         # iterate songs and save
         for song in self.songs:
-            self.u.debug('Saving song: {}'.format(song.title))
+            logger.debug('Saving song: {}'.format(song.title))
             song.save()

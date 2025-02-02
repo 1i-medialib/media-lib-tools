@@ -1,0 +1,23 @@
+{
+    'TALB': TALB(encoding=<Encoding.UTF16: 1>,text=['Shades of Two Worlds']),
+    'TPE1': TPE1(encoding=<Encoding.UTF16: 1>, text=['The Allman Brothers Band']),
+    'TCON': TCON(encoding=<Encoding.UTF16: 1>, text=['Blues Rock;Southern Rock']),
+    'TIT2': TIT2(encoding=<Encoding.UTF16: 1>, text=['Get On With Your Life']),
+    'TRCK': TRCK(encoding=<Encoding.UTF16: 1>, text=['5/8']),
+    'TPUB': TPUB(encoding=<Encoding.UTF16: 1>, text=['Epic']),
+    'POPM:MusicBee': POPM(email='MusicBee', rating=40),
+    'TPE2': TPE2(encoding=<Encoding.UTF16: 1>, text=['The Allman Brothers Band']),
+    'TPOS': TPOS(encoding=<Encoding.UTF16: 1>, text=['1/1']),
+    'TXXX:MusicBrainz Album Release Country': TXXX(encoding=<Encoding.UTF16: 1>, desc='MusicBrainz Album Release Country', text=['US']),
+    'TXXX:MusicBrainz Album Status': TXXX(encoding=<Encoding.UTF16: 1>, desc='MusicBrainz Album Status', text=['official']),
+    'TXXX:MusicBrainz Album Type': TXXX(encoding=<Encoding.UTF16: 1>, desc='MusicBrainz Album Type', text=['album']),
+    'TXXX:MusicBrainz Album Id': TXXX(encoding=<Encoding.UTF16: 1>, desc='MusicBrainz Album Id', text=['5fd9b43f-5d10-4acf-8a4d-f24fee3deef5']),
+    'TXXX:MusicBrainz Artist Id': TXXX(encoding=<Encoding.UTF16: 1>, desc='MusicBrainz Artist Id', text=['72359492-22be-4ed9-aaa0-efa434fb2b01']),
+    'TXXX:MusicBrainz Album Artist Id': TXXX(encoding=<Encoding.UTF16: 1>, desc='MusicBrainz Album Artist Id', text=['72359492-22be-4ed9-aaa0-efa434fb2b01']),
+    'TXXX:MusicBrainz Release Group Id': TXXX(encoding=<Encoding.UTF16: 1>, desc='MusicBrainz Release Group Id', text=['f42eb9a4-fab7-302a-8ecf-8a224a69b6bd']),
+    'UFID:http://musicbrainz.org': UFID(owner='http://musicbrainz.org', data=b'257a4acf-beca-4379-adcd-173667505e0f'),
+    'TMED': TMED(encoding=<Encoding.UTF16: 1>, text=['CD']),
+    'TXXX:MusicBrainz Release Track Id': TXXX(encoding=<Encoding.UTF16: 1>, desc='MusicBrainz Release Track Id', text=['10aa01a9-b881-3de3-bd57-0bb987f5e599']),
+    'TDRC': TDRC(encoding=<Encoding.LATIN1: 0>, text=['1991-07-02']),
+    'TDOR': TDOR(encoding=<Encoding.LATIN1: 0>, text=['1991'])
+    }

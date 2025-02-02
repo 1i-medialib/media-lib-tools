@@ -6,6 +6,7 @@
 
 ## setup
 
+unbuntu
 ```
 python3 -m pip install --user --upgrade pip
 python3 -m venv env
@@ -14,6 +15,14 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
+Windows
+```
+python3.exe -m pip install --upgrade pip
+python3 -m venv env
+.\env\Scripts\activate
+pip install --upgrade pip
+pip install -r requirements.txt
+```
 
 ```
 accept: */*

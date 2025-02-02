@@ -1,26 +1,26 @@
-from utilities.logging import Logging
+import logging
 import psycopg2
 import psycopg2.extras
+
+logger = logging.getLogger(__name__)
 
 class Artist:
     "Music Artist class"
 
-    def __init__(self, log, ytmusic, dbh, name=None, rating=0):
-        self.l = log         # Logging Object
+    def __init__(self, ytmusic, dbh, name=None, rating=0):
         self.ytm = ytmusic   # youtube Music API object
         self.dbh = dbh     # database handle
         self.id = None      # pk from database
-
 
         self.name = name
         self.rating = rating
         self.yt_id = None
 
     def print_attributes(self):
-        self.l.debug('Artist:')
-        self.l.debug('  ID    : {}'.format(self.id))
-        self.l.debug('  Name  : {}'.format(self.name))
-        self.l.debug('  Rating: {}'.format(self.rating))
+        logger.warning('Artist:')
+        logger.warning('  ID    : {}'.format(self.id))
+        logger.warning('  Name  : {}'.format(self.name))
+        logger.warning('  Rating: {}'.format(self.rating))
 
     def load_artist_from_youtube(self,youtube_artist):
         if 'id' in youtube_artist:
@@ -29,23 +29,25 @@ class Artist:
             self.name = youtube_artist['name']
         self.query_artist()
         self.save()
-        self.print_attributes()
+        # only print if debug level
+        if logging.root.level == logging.DEBUG:
+            self.print_attributes()
 
     def query_artist_by_id(self):
         # query artist from db
         if not self.id:
-            self.l.log('No id is defined to query artist by')
+            logger.warning('No id is defined to query artist by')
             return
 
         c_query = self.dbh.cursor(cursor_factory=psycopg2.extras.DictCursor)
         query_statement = """
             SELECT *
-            FROM    medialib.artist s
+            FROM    artist s
             WHERE   s.id = %s
         """
         c_query.execute(query_statement, (self.id,))
         if c_query.rowcount == 0:
-            self.l.log('No artist found for id: {}'.format(self.id))
+            logger.warning('No artist found for id: {}'.format(self.id))
             return
         sdata = c_query.fetchone()
         self.name = sdata['name']
@@ -60,24 +62,24 @@ class Artist:
             return
 
         # query by title, artist, album
-        self.l.log('Querying artist with name: {}, type: {}'.format(
+        logger.debug('Querying artist with name: {}, type: {}'.format(
                 self.name, type(self.name)))
 
         c_query = self.dbh.cursor(cursor_factory=psycopg2.extras.DictCursor)
         query_statement = """
             SELECT *
-            FROM    medialib.artist s
+            FROM    artist s
             WHERE   s.name = %s
         """
 
         c_query.execute(query_statement,
                         (self.name,))
         if c_query.rowcount == 0:
-            self.l.log('No artist found for name: {}, type: {}'.format(self.name, type(self.name)))
+            logger.warning('No artist found for name: {}, type: {}'.format(self.name, type(self.name)))
             return
 
         if c_query.rowcount != 1:
-            self.l.log('Found multiple artists!')
+            logger.warning('Found multiple artists!')
             return
 
         sdata = c_query.fetchone()
@@ -93,7 +95,7 @@ class Artist:
         try:
             c_stmt = self.dbh.cursor()
             insert_stmt = """ 
-            insert into medialib.artist
+            insert into artist
                 ( name, rating, youtube_id )
                 values
                 ( %s, %s, %s )
@@ -104,10 +106,10 @@ class Artist:
                 (self.name, self.rating, self.yt_id )
             )
             self.id = c_stmt.fetchone()[0]
-            self.l.debug('Inserted artist: {} as id: {}'.format(
+            logger.debug('Inserted artist: {} as id: {}'.format(
                 self.name, self.id))
         except (Exception, psycopg2.Error) as error:
-            self.l.log('Error inserting artist: {}'.format(error))
+            logger.error('Error inserting artist: {}'.format(error))
             self.print_attributes()
             raise
 
