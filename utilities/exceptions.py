@@ -13,7 +13,7 @@ class UnhandledFileType(Exception):
     def __str__(self):
         return f'{self.file_type} -> {self.msg}'
 
-class FileTypeImage(Exception):
+class FileTypeIgnore(Exception):
     "MediaLib Image File Type Exception class"
 
     def __init__(self,file_type,msg="Image File Type"):

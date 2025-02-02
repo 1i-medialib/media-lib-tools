@@ -6,11 +6,11 @@ import argparse
 import logging
 from pathlib import Path
 from music.song import Song
-from utilities.exceptions import FileTypeImage, UnhandledFileType
-
+from utilities.exceptions import FileTypeIgnore, UnhandledFileType
 
 file_count = 1
 dir_count = 1
+directory_recursion_level = 0
 
 logger = logging.getLogger(__name__)
 
@@ -31,16 +31,24 @@ def process_file(dbh,file_path):
         try:
             s = Song(ytmusic=None,dbh=dbh,file_name=file_path)
             s.save()
-        except FileTypeImage as e:
-            logger.warning('Not processing image file: {}'.format(e))
+        except FileTypeIgnore as e:
+            logger.debug('Not processing image file: {}'.format(e))
         except UnhandledFileType as e:
             logger.error('Can\'t handle file: {}'.format(e))
+        except Exception as e:
+            logger.error('Error with Song file: {}, - {}'.format(file_path,e))
             raise
 
 def read_dir(dbh,dir_path):
     global file_count
     global dir_count
-    logger.info('Reading directory {}'.format(dir_path))
+    global directory_recursion_level
+
+    directory_recursion_level += 1
+    if directory_recursion_level <= 2:
+        logger.info('Reading directory {}'.format(dir_path))
+    else:
+        logger.debug('Reading directory {}'.format(dir_path))
     if dir_path.endswith('@eaDir'):
         logger.debug('not')
         return
@@ -55,6 +63,7 @@ def read_dir(dbh,dir_path):
             read_dir(dbh,'{}/{}'.format(dir_path, entry.name))
         else:
             logger.error('Don\'t know how to handle entry: {}'.format(entry.name))
+    directory_recursion_level -= 1
 
 
 def main():
@@ -67,7 +76,6 @@ def main():
 
     args = parser.parse_args()
 
-    #u = Logging(args.verbose)
     # set up logging
     if args.verbose:
         log_level = logging.DEBUG

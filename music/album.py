@@ -66,7 +66,7 @@ class Album:
         """
         c_query.execute(query_statement, (self.id,))
         if c_query.rowcount == 0:
-            logger.warning('No album found for id: {}'.format(self.id))
+            logger.debug('No album found for id: {}'.format(self.id))
             return
         sdata = c_query.fetchone()
         self.name = sdata['name']
@@ -98,7 +98,7 @@ class Album:
         c_query.execute(query_statement,
                         (self.name,self.artist_id))
         if c_query.rowcount == 0:
-            logger.warning('No album found for name: {}, artist id: {}'.format(self.name,self.artist_id))
+            logger.debug('No album found for name: {}, artist id: {}'.format(self.name,self.artist_id))
             return
 
         if c_query.rowcount != 1:

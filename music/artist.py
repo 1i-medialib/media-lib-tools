@@ -75,7 +75,7 @@ class Artist:
         c_query.execute(query_statement,
                         (self.name,))
         if c_query.rowcount == 0:
-            logger.warning('No artist found for name: {}, type: {}'.format(self.name, type(self.name)))
+            logger.debug('No artist found for name: {}, type: {}'.format(self.name, type(self.name)))
             return
 
         if c_query.rowcount != 1:
@@ -86,6 +86,7 @@ class Artist:
         self.id = sdata['id']
         self.name = sdata['name']
         self.yt_id = sdata['youtube_id']
+        logger.debug('Artist: {}, has id: {}'.format(self.name,self.id))
 
     def update_db(self):
         pass

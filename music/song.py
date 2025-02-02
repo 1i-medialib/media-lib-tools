@@ -8,7 +8,7 @@ import logging
 from mediafile import MediaFile
 import mutagen
 from mutagen.id3 import ID3, POPM, TXXX, TCON
-from utilities.exceptions import FileTypeImage, UnhandledFileType
+from utilities.exceptions import FileTypeIgnore, UnhandledFileType
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +72,7 @@ class Song:
         self.yt_like_status = None  # INDIFFERENT, LIKE or DISLIKE
         if self.filename:
             logger.debug('working with file: {}'.format(self.filename))
-            self.file_extension = os.path.splitext(self.filename)[1][1:]
+            self.file_extension = (os.path.splitext(self.filename)[1][1:]).lower()
             # TODO: store media_type_id from ext
             logger.debug('File Extension of {} is {}'.format(self.filename, self.file_extension))
             # still need to use mutagen to get some fields
@@ -87,15 +87,25 @@ class Song:
             elif self.file_extension == 'mp3':
                 self.read_tag_data()
             elif self.file_extension == 'png':
-                raise FileTypeImage(self.file_extension)
+                raise FileTypeIgnore(self.file_extension)
+            elif self.file_extension == 'nfo':
+                raise FileTypeIgnore(self.file_extension)
             elif self.file_extension == 'jpg':
-                raise FileTypeImage(self.file_extension)
+                raise FileTypeIgnore(self.file_extension)
             elif self.file_extension == 'db':
-                raise FileTypeImage(self.file_extension)
+                raise FileTypeIgnore(self.file_extension)
+            elif self.file_extension == 'm3u':
+                raise FileTypeIgnore(self.file_extension)
+            elif self.file_extension == 'log':
+                raise FileTypeIgnore(self.file_extension)
             elif self.file_extension == 'txt':
-                raise FileTypeImage(self.file_extension)
+                raise FileTypeIgnore(self.file_extension)
+            elif self.file_extension == 'sfv':
+                raise FileTypeIgnore(self.file_extension)
+            elif self.file_extension == 'cue':
+                raise FileTypeIgnore(self.file_extension)
             else:
-                logger.info('unsupported file type: {}'.format(self.file_extension))
+                logger.warning('unsupported file type: {}'.format(self.file_extension))
                 raise UnhandledFileType(self.file_extension)
 
         # only print if debug level
@@ -218,7 +228,7 @@ class Song:
             self.set_master_rating()
 
     def get_tag_value(self, data, key):
-        #logger.info('looking for key {} in data: {}'.format(key,data))
+        logger.debug('looking for key {} in data: {}'.format(key,data))
         value = data.get(key)
         if not value:
             return None
@@ -296,6 +306,9 @@ class Song:
         if mf is None:
             return
 
+        #logger.debug('mp4 Tags:')
+        #logger.debug(mf)
+
         self.bit_rate = mf.info.bitrate
         self.duration = mf.info.length
 
@@ -333,7 +346,7 @@ class Song:
             self.genre = mf['©gen']
         if '©lyr' in mf:
             self.lyrics = mf['©lyr']
-        if '©lyr' in mf:
+        if '©wrt' in mf:
             self.composer = mf['©wrt']
         if '----:com.apple.iTunes:FMPS_Playcount' in mf:
             self.play_count = int(mf['----:com.apple.iTunes:FMPS_Playcount'][0])
@@ -421,7 +434,7 @@ class Song:
 
     def handle_ogg(self):
         from mutagen.oggvorbis import OggVorbis
-        logger.info('reading ogg file: {}'.format(self.filename))
+        logger.debug('reading ogg file: {}'.format(self.filename))
         __audio = OggVorbis(self.filename)
 
         logger.debug(__audio.tags)
@@ -537,14 +550,14 @@ class Song:
                 if not __artist_id:
                     __artist_id = a.id
         else:
-            logger.info('No artist for song: {}'.format(self.title))
+            logger.debug('No artist for song: {}'.format(self.title))
         if 'album' in youtube_song and youtube_song['album']:
             al = Album(self.ytm,self.dbh,artist_id=__artist_id)
             al.load_album_from_youtube(youtube_song['album'])
             al.artist_id = __artist_id
             self.album = al
         else:
-            logger.info('No album for song: {}'.format(self.title))
+            logger.debug('No album for song: {}'.format(self.title))
         if 'rating' in youtube_song:
             self.rating = youtube_song['rating']
         if 'likeStatus' in youtube_song:
@@ -560,7 +573,7 @@ class Song:
     def query_song_by_id(self):
         # query song from db
         if not self.id:
-            logger.info('No id is defined to query song by')
+            logger.debug('No id is defined to query song by')
             return
         
         c_query = self.dbh.cursor(cursor_factory=psycopg2.extras.DictCursor)
@@ -621,7 +634,8 @@ class Song:
             return
         
         if c_query.rowcount != 1:
-            logger.info('Found multiple songs!')
+            logger.warn('Found multiple songs!')
+            self.print_attributes()
             return
 
         sdata = c_query.fetchone()
@@ -670,7 +684,7 @@ class Song:
             if self.duration:
                 __duration = self.gen.duration_to_seconds(self.duration)
             else:
-                logger.info('Song has no duration')
+                logger.debug('Song has no duration')
                 __duration = None
             if self.album and self.album.id:
                 __album_id = self.album.id
@@ -709,7 +723,7 @@ class Song:
             logger.debug('Updated song: {}, id: {}'.format(
                 self.title, self.id))
         except (Exception, psycopg2.Error) as error:
-            logger.info('Error updating song: {}'.format(error))
+            logger.error('Error updating song: {}'.format(error))
             self.print_attributes()
             raise
 
@@ -759,7 +773,7 @@ class Song:
             self.id = c_stmt.fetchone()[0]
             logger.debug('Inserted song: {} as id: {}'.format(self.title,self.id))
         except (Exception, psycopg2.Error) as error:
-            logger.info('Error inserting song: {}'.format(error))
+            logger.error('Error inserting song: {}'.format(error))
             self.print_attributes()
             raise 
 
