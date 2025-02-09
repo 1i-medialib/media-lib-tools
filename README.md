@@ -1,6 +1,6 @@
 # Playing around with YouTube Music API
 
-[Docs](https://ytmusicapi.readthedocs.io/en/latest/setup.html)
+[Docs](https://ytmusicapi.readthedocs.io/en/stable/setup/index.html)
 [Repo]()
 
 
@@ -23,6 +23,15 @@ python3 -m venv env
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
+
+## Connection setup
+
+```
+pip install ytmusicapi
+ytmusicapi oauth
+
+```
+
 
 ```
 accept: */*

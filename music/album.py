@@ -147,7 +147,7 @@ class Album:
             c_stmt.close()
 
     def insert_db(self):
-        logger.info('Inserting album name {}, artist id: {}'.format(self.name,self.artist_id))
+        logger.debug('Inserting album name {}, artist id: {}'.format(self.name,self.artist_id))
         try:
             c_stmt = self.dbh.cursor()
             insert_stmt = """ 
