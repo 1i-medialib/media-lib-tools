@@ -1,3 +1,4 @@
 mediafile
+mutagen
 psycopg2-binary
 ytmusicapi
