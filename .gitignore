@@ -1,3 +1,6 @@
 env
 __pycache__
 headers_auth.json
+.vscode
+.direnv
+.git

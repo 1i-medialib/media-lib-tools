@@ -3,7 +3,13 @@ import logging
 from utilities.exceptions import InvalidFileExtension, FatalError
 
 logger = logging.getLogger(__name__)
+#local_music_path = r"E:\media\music"
 local_music_path = r"E:\media\music"
+#dbFileName=r"Z:\appdata\plexmediaserver\app\Library\Application Support\Plex Media Server\Plug-in Support\Databases\com.plexapp.plugins.library.test.db"
+#dbFileName=r'Z:\appdata\plexmediaserver\app\Library\Application Support\Plex Media Server\Plug-in Support\Databases\com.plexapp.plugins.library.db'
+dbFileName='/srv/appdata/plexmediaserver/app/Library/Application Support/Plex Media Server/Plug-in Support/Databases/com.plexapp.plugins.library.db'
+#dbFileName=r'/srv/appdata/plexmediaserver/app/Library/Application Support/Plex Media Server/Plug-in Support/Databases/com.plexapp.plugins.library.test.db'
+
 
 class Track:
     'Common base class for all tracks'
@@ -44,10 +50,11 @@ class Track:
         logger.info('db commit and close')
 
     def getLocalPath(self,libPath,fileName):
-        logger.debug(f'got db track path: {fileName}. replacing with {local_music_path}')
-        newfile = fileName.replace(libPath,local_music_path)
-        logger.debug(f'Local track path is {newfile}')
-        return newfile
+#        logger.debug(f'got db track path: {fileName}. replacing with {local_music_path}')
+#        newfile = fileName.replace(libPath,local_music_path)
+#        logger.debug(f'Local track path is {newfile}')
+#        return newfile
+        return fileName
 
     def displayCount(self):
         logger.info ("Total tracks %d" % Track.trackCount)
@@ -57,8 +64,6 @@ class Track:
 
     def dbConnect(self):
         import sqlite3
-        #dbFileName='/srv/appdata/plexmediaserver/app/Library/Application Support/Plex Media Server/Plug-in Support/Databases/com.plexapp.plugins.library.db'
-        dbFileName=r'Z:\appdata\plexmediaserver\app\Library\Application Support\Plex Media Server\Plug-in Support\Databases\com.plexapp.plugins.library.db'
 
         conn = sqlite3.connect(dbFileName)
         return conn
@@ -212,8 +217,6 @@ def main():
     logger.info('Here we go')
     logger.debug('Running in verbose mode')
 
-    #dbFileName=r"Z:\appdata\plexmediaserver\app\Library\Application Support\Plex Media Server\Plug-in Support\Databases\com.plexapp.plugins.library.db"
-    dbFileName=r"Z:\appdata\plexmediaserver\app\Library\Application Support\Plex Media Server\Plug-in Support\Databases\com.plexapp.plugins.library.test.db"
     logger.info('using database file: {}'.format(dbFileName))
     conn = sqlite3.connect(dbFileName)
     q1 = '''\
@@ -242,8 +245,8 @@ def main():
         except FileNotFoundError as e:
             logger.error(str(e))
             return
-        if t_count > 300:
-            break
+        #if t_count > 300:
+        #    break
 
     t.displayCount()
     logger.info ("Done....")

@@ -35,8 +35,9 @@ class FileTypeIgnore(Exception):
 
 class InvalidFileExtension(Exception):
     "Unhandled Extension"
-    def __init__(self,file_extension,file_namemsg="Unsupported File Extension"):
+    def __init__(self,file_extension,file_name,msg="Unsupported File Extension"):
         self.file_extension = file_extension
+        self.file_name = file_name
         self.msg = msg
         super().__init__(self.msg)
 
