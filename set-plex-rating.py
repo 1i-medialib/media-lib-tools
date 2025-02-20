@@ -201,9 +201,9 @@ class Track:
         self.jerry_metaDataItemsId = r[9]
         self.jerry_accountId = r[10]
         self.jerry_plexRating = r[11]
-        self.general_metaDataItemsId = r[9]
-        self.general_accountId = r[10]
-        self.general_plexRating = r[11]
+        self.general_metaDataItemsId = r[12]
+        self.general_accountId = r[13]
+        self.general_plexRating = r[14]
 # End Class Track
 
 #t = Track(201734)
