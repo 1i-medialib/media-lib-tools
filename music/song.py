@@ -58,22 +58,22 @@ class Song:
         else:
             self.filename = None
         self.lyrics = None
-        self.media_type_id = 1
+        self.media_type_id = 0
         self.play_count = play_count
         self.plex_id = plex_id
         self.rating = rating
+        self.otf_rating = round(rating,0)
         self.release_date = release_date
         self.release_year = release_year
         self.score = 0
         self.title = None
         self.track_number = None
-
+        self.navidrome_id = None
         self.yt_id = None   # id or videoId from youtube music
         self.yt_like_status = None  # INDIFFERENT, LIKE or DISLIKE
         if self.filename:
             logger.debug('working with file: {}'.format(self.filename))
             self.file_extension = (os.path.splitext(self.filename)[1][1:]).lower()
-            # TODO: store media_type_id from ext
             logger.debug('File Extension of {} is {}'.format(self.filename, self.file_extension))
             # still need to use mutagen to get some fields
             if self.file_extension == 'ogg':
@@ -116,6 +116,7 @@ class Song:
 
     def print_attributes(self):
         logger.warning('Song:')
+        logger.warning(f'  Id                  : {self.id}')
         logger.warning('  Title               : {}'.format(self.title))
         logger.warning('  File Name           : {}'.format(self.filename))
         for a in self.artists:
@@ -245,6 +246,7 @@ class Song:
     def handle_flac(self):
         from mutagen.flac import FLAC
         __audio = FLAC(self.filename)
+        self.media_type_id = 3 # flac
 
         logger.debug('Flac Tags:')
         logger.debug(__audio.tags)
@@ -305,6 +307,7 @@ class Song:
             return
         if mf is None:
             return
+        self.media_type_id = 5 # mp4
 
         #logger.debug('mp4 Tags:')
         #logger.debug(mf)
@@ -376,6 +379,7 @@ class Song:
         from mutagen.wave import WAVE
         logger.debug('reading wav file: {}'.format(self.filename))
         __audio = WAVE(self.filename)
+        self.media_type_id = 4 # waf
 
         for t in __audio.tags:
             if 'APIC' in t:
@@ -436,7 +440,7 @@ class Song:
         from mutagen.oggvorbis import OggVorbis
         logger.debug('reading ogg file: {}'.format(self.filename))
         __audio = OggVorbis(self.filename)
-
+        self.media_type_id = 2 # ogg
         logger.debug(__audio.tags)
         self.bit_rate = __audio.info.bitrate
         self.duration = __audio.info.length
@@ -480,7 +484,6 @@ class Song:
             self.rating = 0
         else:
             self.rating = int(float(self.rating[0]) * 10)
-
 
     def set_master_rating(self):
         # if clementinerating: (value * 10)

@@ -88,7 +88,7 @@ def main():
 
     pg_config = {
         'user': 'medialib_app',
-        'password': 'medialib',
+        'password': 'apppass',
         'host': '192.168.50.5',
         'database': 'medialib',
         'port': 35432

@@ -54,7 +54,7 @@ class Gen:
             logger.debug('got a validate year, returning date')
             return original_date + '-01-01'
 
-        fmt = '\\d\\d\\d\\d\-\\d\\d\\Z'
+        fmt = '\\d\\d\\d\\d\\-\\d\\d\\Z'
         match = re.match(fmt, original_date)
         if match:
             logger.debug('got a validate year, returning date')

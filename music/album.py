@@ -20,8 +20,10 @@ class Album:
         self.release_year = release_year
         self.number_of_disks = number_of_disks
         self.track_count = track_count
+        self.otf_rating = round(rating,0)
         self.rating = rating
         self.yt_id = None
+        self.navidrome_id = None
 
     def print_attributes(self):
         logger.warning('Album:')
@@ -64,7 +66,7 @@ class Album:
             FROM    album s
             WHERE   s.id = %s
         """
-        c_query.execute(query_statement, (self.id,))
+        c_query.execute(query_statement,(self.id,))
         if c_query.rowcount == 0:
             logger.debug('No album found for id: {}'.format(self.id))
             return

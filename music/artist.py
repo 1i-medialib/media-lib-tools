@@ -7,20 +7,23 @@ logger = logging.getLogger(__name__)
 class Artist:
     "Music Artist class"
 
-    def __init__(self, ytmusic, dbh, name=None, rating=0):
+    def __init__(self, ytmusic, dbh, name=None, rating=None,otf_rating=None):
         self.ytm = ytmusic   # youtube Music API object
         self.dbh = dbh     # database handle
         self.id = None      # pk from database
 
         self.name = name
         self.rating = rating
+        self.otf_rating = otf_rating
         self.yt_id = None
+        self.navidrome_id = None
 
     def print_attributes(self):
         logger.warning('Artist:')
         logger.warning('  ID    : {}'.format(self.id))
         logger.warning('  Name  : {}'.format(self.name))
         logger.warning('  Rating: {}'.format(self.rating))
+        logger.warning('  Navidrome Id: {}'.format(self.navidrome_id))
 
     def load_artist_from_youtube(self,youtube_artist):
         if 'id' in youtube_artist:
@@ -39,13 +42,14 @@ class Artist:
             logger.warning('No id is defined to query artist by')
             return
 
+        logger.debug(f'Querying artist id: {self.id}')
         c_query = self.dbh.cursor(cursor_factory=psycopg2.extras.DictCursor)
         query_statement = """
             SELECT *
             FROM    artist s
             WHERE   s.id = %s
         """
-        c_query.execute(query_statement, (self.id,))
+        c_query.execute(query_statement,(self.id,))
         if c_query.rowcount == 0:
             logger.warning('No artist found for id: {}'.format(self.id))
             return
@@ -53,6 +57,7 @@ class Artist:
         self.name = sdata['name']
         self.rating = sdata['rating']
         self.yt_id = sdata['youtube_id']
+        self.navidrome_id = sdata['navidrome_id']
 
     def query_artist(self):
         # query artist from db
@@ -92,7 +97,6 @@ class Artist:
         pass
 
     def insert_db(self):
-
         try:
             c_stmt = self.dbh.cursor()
             insert_stmt = """ 

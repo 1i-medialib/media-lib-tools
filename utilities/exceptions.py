@@ -11,6 +11,65 @@ class FatalError(Exception):
     def __str__(self):
         return f'FatalError: {self.msg}'
 
+class AlbumNotFound(Exception):
+    "MediaLib Artist Name Search Not Found"
+
+    def __init__(self,artist_name,album_name,msg="MediaLib Album Name Search Not Found"):
+        self.artist_name = artist_name
+        self.album_name = album_name
+        self.msg = msg
+        super().__init__(self.msg)
+
+    def __str__(self):
+        return f'Arist: {self.artist_name}, Album: {self.album_name} -> {self.msg}'
+
+class ArtistsNotFound(Exception):
+    "MediaLib Artist Name Search Not Found"
+
+    def __init__(self,artist_name,msg="MediaLib Artist Name Search Not Found"):
+        self.name = artist_name
+        self.msg = msg
+        super().__init__(self.msg)
+
+    def __str__(self):
+        return f'{self.artist_name} -> {self.msg}'
+
+class MultipleArtistsFound(Exception):
+    "MediaLib Artist Name Search Yielded More Than One Result"
+
+    def __init__(self,artist_name,msg="MediaLib Artist Name Search Yielded More Than One Result"):
+        self.name = artist_name
+        self.msg = msg
+        super().__init__(self.msg)
+
+    def __str__(self):
+        return f'{self.artist_name} -> {self.msg}'
+
+class AlbumNotFound(Exception):
+    "MediaLib Album Name Search Not Found"
+
+    def __init__(self,artist_name,album_name,msg="MediaLib Album Name Search Not Found"):
+        self.artist_name = artist_name
+        self.album_name = album_name
+        self.msg = msg
+        super().__init__(self.msg)
+
+    def __str__(self):
+        return f'Arist: {self.artist_name}, Album: {self.album_name} -> {self.msg}'
+
+class SongNotFound(Exception):
+    "MediaLib Song Name Search Not Found"
+
+    def __init__(self,artist_name,album_name,song_name, msg="MediaLib Song Name Search Not Found"):
+        self.artist_name = artist_name
+        self.album_name = album_name
+        self.song_name = song_name
+        self.msg = msg
+        super().__init__(self.msg)
+
+    def __str__(self):
+        return f'Arist: {self.artist_name}, Album: {self.album_name}, Song: {self.song_name} -> {self.msg}'
+
 class UnhandledFileType(Exception):
     "MediaLib Unsupported File Type Exception class"
 
