@@ -626,6 +626,7 @@ class Song:
             AND     s.album_id = %s
         """
 
+        logger.debug(self.artists)
         __artist_id = self.artists[0].id
         if self.album and self.album.id:
             __album_id = self.album.id

@@ -174,8 +174,10 @@ class Navidrome:
     def update_artist(self,artist):
         if artist.otf_rating:
             rating = artist.otf_rating
-        else:
+        elif artist.rating:
             rating = round(artist.rating/2)
+        else:
+            rating = 0
         logger.info(f'Artist: {artist.name} has rating of: {rating}')
         if not artist.navidrome_id:
             logger.debug(f'Need to get navidrome_id for artist name: {artist.name}')

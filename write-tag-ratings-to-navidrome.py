@@ -88,7 +88,6 @@ def process_artists(dbh,navidrome):
         SELECT  id
         FROM    ARTIST
         WHERE   ID != 0
-        AND     id in (604)
         ORDER BY name ASC
         ''')
 
