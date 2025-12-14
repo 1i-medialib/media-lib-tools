@@ -1,7 +1,7 @@
 env
 .envrc
 __pycache__
-headers_auth.json
+headers_auth.json  
 .vscode
 .direnv
 .git
