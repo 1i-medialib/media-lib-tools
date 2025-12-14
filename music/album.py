@@ -2,6 +2,8 @@ from music.artist import Artist
 import logging
 import psycopg2
 import psycopg2.extras
+from utilities.navidrome import Navidrome
+from utilities.exceptions import FatalError, AlbumNotFound
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +61,7 @@ class Album:
         if not self.id:
             logger.warning('No id is defined to query album by')
             return
+        logger.debug(f'Querying album by id: {self.id}')
 
         c_query = self.dbh.cursor(cursor_factory=psycopg2.extras.DictCursor)
         query_statement = """
@@ -79,6 +82,20 @@ class Album:
         self.track_count = sdata['track_count']
         self.rating = sdata['rating']
         self.yt_id = sdata['youtube_id']
+        if sdata['navidrome_id']:
+            self.navidrome_id = sdata['navidrome_id']
+        else:
+            n = Navidrome()  
+            logger.debug(f'Querying navidrome for album name: {self.name}')
+            ao = Artist()
+            ao.query_artist_by_id(self.artist_id)
+            try:
+                self.navidrome_id = n.search_album(ao,self)
+                logger.debug(f'Got navidrome album_id: {self.navidrome_id}')
+            except AlbumNotFound as e:
+                logger.info(f'Could not find album name: {self.name} for artist: {ao.name} in Navidrome. continuing....')
+                self.navidrome_id = None
+
 
     def query_album(self):
         # query album from db
@@ -87,7 +104,8 @@ class Album:
             self.query_album_by_id()
             return
 
-        # query by tiname, artist_id
+        # query by name, artist_id
+        logger.debug(f'Querying album by name: {self.name} and artist_id: {self.artist_id}')
 
         c_query = self.dbh.cursor(cursor_factory=psycopg2.extras.DictCursor)
         query_statement = """
@@ -117,8 +135,24 @@ class Album:
         self.track_count = sdata['track_count']
         self.rating = sdata['rating']
         self.yt_id = sdata['youtube_id']
+        if sdata['navidrome_id']:
+            self.navidrome_id = sdata['navidrome_id']
+        else:
+            n = Navidrome()  
+            logger.debug(f'Querying navidrome for album name: {self.name}')
+            ao = Artist(self.ytm,self.dbh)
+            ao.id = self.artist_id
+            ao.query_artist_by_id()
+            try:
+                self.navidrome_id = n.search_album(ao,self)
+            except AlbumNotFound as e:
+                self.navidrome_id = None
+           
+            logger.debug(f'Got navidrome album_id: {self.navidrome_id}')
 
     def update_db(self):
+        logger.debug('Updating album name {}, album id: {}'.format(self.name,self.id))
+        logger.debug(f'Navidrome_id: {self.navidrome_id}')
 
         try:
             c_stmt = self.dbh.cursor()
@@ -131,13 +165,14 @@ class Album:
                     number_of_disks = %s,
                     track_count = %s,
                     rating = %s,
-                    youtube_id = %s
+                    youtube_id = %s,
+                    navidrome_id = %s
                 where id = %s
             """
             c_stmt.execute(
                 update_stmt,
                 (self.name, self.artist_id, self.release_date, self.release_year, self.number_of_disks,
-                 self.track_count, self.rating, self.yt_id, self.id)
+                 self.track_count, self.rating, self.yt_id, self.navidrome_id, self.id)
             )
             logger.debug('Updated album: {}, id: {}'.format(self.name, self.id))
         except (Exception, psycopg2.Error) as error:
@@ -155,15 +190,15 @@ class Album:
             insert_stmt = """ 
             insert into album
                 ( name, artist_id, release_date, release_year, number_of_disks,
-                  track_count, rating, youtube_id )
+                  track_count, rating, youtube_id, navidrome_id )
                 values
-                ( %s, %s, %s, %s, %s, %s, %s, %s )
+                ( %s, %s, %s, %s, %s, %s, %s, %s, %s )
                 RETURNING id
             """
             c_stmt.execute(
                 insert_stmt,
                 (self.name, self.artist_id, self.release_date, self.release_year, self.number_of_disks,
-                 self.track_count, self.rating, self.yt_id)
+                 self.track_count, self.rating, self.yt_id, self.navidrome_id)
             )
             self.id = c_stmt.fetchone()[0]
             logger.debug('Inserted album: {} as id: {}'.format(

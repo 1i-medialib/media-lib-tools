@@ -1,6 +1,8 @@
 import logging
 import psycopg2
 import psycopg2.extras
+from utilities.navidrome import Navidrome
+from utilities.exceptions import FatalError, ArtistNotFound
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +59,18 @@ class Artist:
         self.name = sdata['name']
         self.rating = sdata['rating']
         self.yt_id = sdata['youtube_id']
-        self.navidrome_id = sdata['navidrome_id']
+        if sdata['navidrome_id']:
+            self.navidrome_id = sdata['navidrome_id']
+        else:
+            n = Navidrome()  
+            logger.debug(f'Querying navidrome for artist name: {self.name}')
+            try:
+                self.navidrome_id = n.search_artist(self)
+                logger.debug(f'Got navidrome artist_id: {self.navidrome_id}')
+            except ArtistNotFound as e:
+                logger.info(f'Could not find artist name: {self.name} in Navidrome. continuing....')
+                self.navidrome_id = None
+            logger.debug(f'Got navidrome artist_id: {self.navidrome_id}')
 
     def query_artist(self):
         # query artist from db
@@ -91,24 +104,60 @@ class Artist:
         self.id = sdata['id']
         self.name = sdata['name']
         self.yt_id = sdata['youtube_id']
+        if sdata['navidrome_id']:
+            self.navidrome_id = sdata['navidrome_id']
+        else:
+            n = Navidrome()  
+            logger.debug(f'Querying navidrome for artist name: {self.name}')
+            try:
+                self.navidrome_id = n.search_artist(self)
+                logger.debug(f'Got navidrome artist_id: {self.navidrome_id}')
+            except ArtistNotFound as e:
+                logger.info(f'Could not find artist name: {self.name} in Navidrome. continuing....')
+                self.navidrome_id = None
         logger.debug('Artist: {}, has id: {}'.format(self.name,self.id))
 
     def update_db(self):
-        pass
+        try:
+            c_stmt = self.dbh.cursor()
+            update_stmt = """ 
+            update artist
+                set name = %s,
+                    rating = %s,
+                    youtube_id = %s,
+                    navidrome_id = %s,
+                    otf_rating = %s
+                where id = %s
+            """
+            c_stmt.execute(
+                update_stmt,
+                (self.name, self.rating, self.yt_id, self.navidrome_id,
+                 self.otf_rating, self.id)
+            )
+            logger.debug('Updated artist: {} as id: {}'.format(
+                self.name, self.id))
+        except (Exception, psycopg2.Error) as error:
+            logger.error('Error updating artist: {}'.format(error))
+            self.print_attributes()
+            raise
+
+        finally:
+            c_stmt.close()
 
     def insert_db(self):
         try:
             c_stmt = self.dbh.cursor()
             insert_stmt = """ 
             insert into artist
-                ( name, rating, youtube_id )
+                ( name, rating, youtube_id, navidrome_id, rating, otf_rating )
                 values
-                ( %s, %s, %s )
+                ( %s, %s, %s, %s, %s, %s )
                 RETURNING id
             """
             c_stmt.execute(
                 insert_stmt,
-                (self.name, self.rating, self.yt_id )
+                (self.name, self.rating, self.yt_id, self.navidrome_id,
+                 self.rating, self.otf_rating)
             )
             self.id = c_stmt.fetchone()[0]
             logger.debug('Inserted artist: {} as id: {}'.format(

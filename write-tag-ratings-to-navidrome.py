@@ -7,7 +7,7 @@ import logging
 from music.song import Song
 from music.artist import Artist
 from music.album import Album
-from utilities.exceptions import FatalError, MultipleArtistsFound, ArtistsNotFound, AlbumNotFound, SongNotFound
+from utilities.exceptions import FatalError, MultipleArtistsFound, ArtistNotFound, AlbumNotFound, SongNotFound
 from utilities.navidrome import Navidrome
 
 file_count = 1
@@ -107,7 +107,7 @@ def process_artists(dbh,navidrome):
                     navidrome.update_artist(artist)
 
                 process_albums(dbh,navidrome,artist)
-            except ArtistsNotFound as e:
+            except ArtistNotFound as e:
                 continue
 
     artist_cursor.close()

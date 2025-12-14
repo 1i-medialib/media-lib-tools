@@ -9,6 +9,7 @@ from mediafile import MediaFile
 import mutagen
 from mutagen.id3 import ID3, POPM, TXXX, TCON
 from utilities.exceptions import FileTypeIgnore, UnhandledFileType
+from utilities.navidrome import Navidrome
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,6 @@ class Song:
         self.score = 0
         self.title = None
         self.track_number = None
-        self.navidrome_id = None
         self.yt_id = None   # id or videoId from youtube music
         self.yt_like_status = None  # INDIFFERENT, LIKE or DISLIKE
         if self.filename:
@@ -107,6 +107,14 @@ class Song:
             else:
                 logger.warning('unsupported file type: {}'.format(self.file_extension))
                 raise UnhandledFileType(self.file_extension)
+        self.navidrome_id = None
+        n = Navidrome()  
+        if not self.navidrome_id:
+            for a in self.artists:
+                logger.debug(f'Got artist name: {a.name}')
+                self.navidrome_id = n.search_song(a,self.album,self)
+                logger.debug(f'Got navidrome song id: {self.navidrome_id}')
+
 
         # only print if debug level
         if logging.root.level == logging.DEBUG:
@@ -132,6 +140,7 @@ class Song:
         logger.warning('  YTM Like Status     : {}'.format(self.yt_like_status))
         logger.warning('  Score/Popularimeter : {}'.format(self.score))
         logger.warning('  Comment             : {}'.format(self.comment))
+        logger.warning('  Navidrome Id        : {}'.format(self.navidrome_id))
         if self.play_count:
             logger.warning('  Play Count          : {}'.format(self.play_count))
 
@@ -151,6 +160,8 @@ class Song:
             a.query_artist()
             if not a.id:
                 a.insert_db()
+            else:
+                a.update_db()
             self.artists.append(a)
         self.artist_sort = f.artist_sort
 
@@ -165,6 +176,7 @@ class Song:
                 al.insert_db()
             else:
                 logger.debug('found an album: {}'.format(al.id))
+                al.update_db()
             self.album = al
 
         self.bitrate = f.bitrate
@@ -262,6 +274,8 @@ class Song:
             a.query_artist()
             if not a.id:
                 a.insert_db()
+            else:
+                a.update_db()
             self.artists.append(a)
 
         __album = self.get_tag_value(__audio.tags, 'ALBUM')
@@ -271,11 +285,13 @@ class Song:
                        name=__album,
                        artist_id=self.artists[0].id)
             al.query_album()
+            logger.debug('going to save album')
             if not al.id:
-                logger.debug('couldn\'t find an album')
                 al.insert_db()
             else:
-                logger.debug('found an album: {}'.format(al.id))
+                al.update_db()
+            al.dbh.commit()
+
             self.album = al
 
         self.album_artist = self.get_tag_value(__audio.tags, 'ALBUMARTIST')
@@ -325,6 +341,8 @@ class Song:
                 a.query_artist()
                 if not a.id:
                     a.insert_db()
+                else:
+                    a.update_db()
                 self.artists.append(a)
         if 'tmpo' in mf:
             self.bpm = mf['tmpo'][0]
@@ -338,6 +356,8 @@ class Song:
                 al.query_album()
                 if not al.id:
                     al.insert_db
+                else:
+                    al.update_db
                 self.album = al
         if 'aART' in mf:
             self.album_artist = mf['aART']
@@ -396,6 +416,8 @@ class Song:
             a.query_artist()
             if not a.id:
                 a.insert_db()
+            else:
+                a.update_db()
             self.artists.append(a)
 
         __album = self.get_tag_value(__audio.tags, 'TALB').text[0]
@@ -407,6 +429,8 @@ class Song:
             al.query_album()
             if not al.id:
                 al.insert_db
+            else:
+                al.update_db
             self.album = al
 
         self.album_artist = self.get_tag_value(__audio.tags, 'TPE1').text[0]
@@ -441,18 +465,20 @@ class Song:
         logger.debug('reading ogg file: {}'.format(self.filename))
         __audio = OggVorbis(self.filename)
         self.media_type_id = 2 # ogg
-        logger.debug(__audio.tags)
+        #logger.debug(__audio.tags)
         self.bit_rate = __audio.info.bitrate
         self.duration = __audio.info.length
         self.title = self.get_tag_value(__audio.tags, 'TITLE')
 
         __artist = self.get_tag_value(__audio.tags, 'ARTIST')
-        logger.error('ogg artist is {}, type: {}'.format(__artist, type(__artist)))
+        logger.debug('ogg artist is {}, type: {}'.format(__artist, type(__artist)))
         if __artist:
             a = Artist(self.ytm, self.dbh, name=__artist)
             a.query_artist()
             if not a.id:
                 a.insert_db()
+            else:
+                a.update_db()
             self.artists.append(a)
 
 
@@ -465,6 +491,8 @@ class Song:
             al.query_album()
             if not al.id:
                 al.insert_db
+            else:
+                al.update_db
             self.album = al
 
         self.album_artist = self.get_tag_value(__audio.tags, 'ALBUMARTIST')
@@ -481,6 +509,8 @@ class Song:
         self.lyrics = self.get_tag_value(__audio.tags, 'LYRICS')
         self.rating = self.get_tag_value(__audio.tags, 'FMPS_RATING')
         if self.rating == '':
+            self.rating = 0
+        elif self.rating is None:
             self.rating = 0
         else:
             self.rating = int(float(self.rating[0]) * 10)
@@ -714,14 +744,16 @@ class Song:
                     filename = %s,
                     artist_id = %s,
                     album_id = %s,
-                    media_type_id = %s
+                    media_type_id = %s,
+                    navidrome_id = %s
                 where id = %s
             """
             c_stmt.execute(
                 update_stmt,
                 (self.title, self.comment, self.release_year, self.release_date, self.track_number,
                  self.arranger, self.bpm, self.rating, __duration, self.disk_number, self.score,
-                 self.yt_id, self.filename, __artist_id, __album_id, self.media_type_id, self.id
+                 self.yt_id, self.filename, __artist_id, __album_id, self.media_type_id, 
+                 self.navidrome_id, self.id
                  )
             )
             logger.debug('Updated song: {}, id: {}'.format(
@@ -760,18 +792,18 @@ class Song:
             insert into song
                 ( title, comment, year, release_date, track_number,
                 arranger, bpm, rating, duration, disk_number, score, youtube_like_status,
-                youtube_id, filename, artist_id, album_id, media_type_id )
+                youtube_id, filename, artist_id, album_id, media_type_id, navidrome_id )
                 values
                 ( %s, %s, %s, %s, %s,
                 %s, %s, %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, %s )
+                %s, %s, %s, %s, %s, %s )
                 RETURNING id
             """
             c_stmt.execute(
                 insert_stmt,
                 ( self.title, self.comment, self.release_year, self.release_date, self.track_number,
                   self.arranger, self.bpm, self.rating, __duration, self.disk_number, self.score, self.yt_like_status,
-                self.yt_id, self.filename, artist_id, __album_id, self.media_type_id
+                  self.yt_id, self.filename, artist_id, __album_id, self.media_type_id, self.navidrome_id
                 )
             )
             self.id = c_stmt.fetchone()[0]

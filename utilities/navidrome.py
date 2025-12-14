@@ -4,7 +4,7 @@ import hashlib
 import secrets
 import urllib
 import http
-from utilities.exceptions import FatalError, MultipleArtistsFound, AlbumNotFound, ArtistsNotFound, SongNotFound
+from utilities.exceptions import FatalError, MultipleArtistsFound, AlbumNotFound, ArtistNotFound, SongNotFound
 
 logger = logging.getLogger(__name__)
 http.client.HTTPConnection.debuglevel = 0
@@ -70,30 +70,30 @@ class Navidrome:
         jsonresp = self.send_request('search2',payload)
         if 'artist' not in jsonresp['subsonic-response']['searchResult2']:
             logger.fatal(f'No Artist not found with name: {artist.name}')
-            raise ArtistsNotFound(artist.name)
+            raise ArtistNotFound(artist.name)
         resp = jsonresp['subsonic-response']['searchResult2']['artist']
         if len(resp) == 1:
-            logger.fatal(f'Search for artist name: {artist.name} returned one result. That was easy!')
+            logger.debug(f'Search for artist name: {artist.name} returned one result. That was easy!')
             result = resp[0]
         elif len(resp) == 0:
             logger.fatal(f'Artist not found with name: {artist.name}')
-            raise ArtistsNotFound(artist.name)
+            raise ArtistNotFound(artist.name)
         else:
-            logger.info('Found {} artists with containing name: {}'.
+            logger.debug('Found {} artists with containing name: {}'.
                         format(len(resp),artist.name))
             sfound = False
             for a in resp:
-                logger.info(f'Artist: {a['name']}')
+                logger.debug(f'Artist: {a['name']}')
                 if a['name'] == artist.name:
                     result = a
                     sfound = True
                     break
             if not sfound:
                 logger.fatal(f'Artist with name: {artist.name} not found.')
-                raise ArtistsNotFound(artist.name)
+                raise ArtistNotFound(artist.name)
 
         result = jsonresp['subsonic-response']['searchResult2']['artist'][0]
-        logger.info(result)
+        #logger.info(result)
         self.artist_id = result['id']
         return result['id']
 
@@ -112,17 +112,17 @@ class Navidrome:
         resp = jsonresp['subsonic-response']['searchResult2']['album']
         #logger.info(resp)
         if len(resp) == 1:
-            logger.info(f'Search for album name: {album.name} returned one result. That was easy')
+            logger.debug(f'Search for album name: {album.name} returned one result. That was easy')
             result = resp[0]
         elif len(resp) == 0:
             logger.fatal(f'Album with name: {album.name} not found.')
             raise AlbumNotFound(artist.name,album.name)
         else:
-            logger.info('Found {} albums with name: {}'.
+            logger.debug('Found {} albums with name: {}'.
                         format(len(resp),album.name))
             sfound = False
             for a in resp:
-                logger.info(f'Artist: {a['artist']}, Album: {a['name']}')
+                logger.debug(f'Artist: {a['artist']}, Album: {a['name']}')
                 if a['artist'] == artist.name and a['name'] == album.name:
                     result = a
                     sfound = True
@@ -148,17 +148,17 @@ class Navidrome:
         resp = jsonresp['subsonic-response']['searchResult2']['song']
         #logger.info(resp)
         if len(resp) == 1:
-            logger.info(f'Search for song name: {song.title} returned one result. That was easy')
+            logger.debug(f'Search for song name: {song.title} returned one result. That was easy')
             result = resp[0]
         elif len(resp) == 0:
             logger.fatal(f'Song with name: {song.title} not found.')
             raise SongNotFound(artist.name,album.name,song.title)
         else:
-            logger.info('Found {} songs with name: {}'.
+            logger.debug('Found {} songs with name: {}'.
                         format(len(resp),song.title))
             sfound = False
             for a in resp:
-                logger.info(f'Artist: {a['artist']}, Album: {a['album']}, Song: {a['title']}')
+                logger.debug(f'Artist: {a['artist']}, Album: {a['album']}, Song: {a['title']}')
                 if a['artist'] == artist.name and a['album'] == album.name and a['title'] == song.title:
                     result = a
                     sfound = True
@@ -166,7 +166,6 @@ class Navidrome:
             if not sfound:
                 logger.fatal(f'Song with name: {song.title} not found.')
                 raise SongNotFound(artist.name,album.name,song.title)
-
 
         self.song_id = result['id']
         return result['id']

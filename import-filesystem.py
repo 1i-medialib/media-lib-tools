@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-
+"""
+Program reads from the file system and inserts/updates data in the medialib database.
+It will also fine the navidrome id of songs, albums and artists and put it in the
+medialib db
+"""
 import psycopg2
 import psycopg2.extras
 import argparse
 import logging
 from pathlib import Path
 from music.song import Song
-from utilities.exceptions import FileTypeIgnore, UnhandledFileType
+from utilities.exceptions import FileTypeIgnore, UnhandledFileType, SongNotFound
 
 file_count = 1
 dir_count = 1
@@ -35,6 +39,8 @@ def process_file(dbh,file_path):
             logger.debug('Not processing image file: {}'.format(e))
         except UnhandledFileType as e:
             logger.error('Can\'t handle file: {}'.format(e))
+        except SongNotFound as e:
+            logger.error('Could not find Song file: {}, - {}. continuing'.format(file_path,e))
         except Exception as e:
             logger.error('Error with Song file: {}, - {}'.format(file_path,e))
             raise
@@ -50,7 +56,7 @@ def read_dir(dbh,dir_path):
     else:
         logger.debug('Reading directory {}'.format(dir_path))
     if dir_path.endswith('@eaDir'):
-        logger.debug('not')
+        directory_recursion_level -= 1
         return
     p = Path(dir_path)
     for entry in p.iterdir():
